@@ -17,11 +17,13 @@
 
 void
 fixpoint_init( fixpoint_t *val, uint32_t whole, uint32_t frac, bool negative ) {
+  //initialize each field of val with correct field vallues
 
   val->whole = whole;
   val-> frac= frac;
   val -> negative = negative;
   
+  //if whole and frac are zero it is not negative
    if(whole==0 && frac==0){
     val->negative=false;
    }
@@ -33,27 +35,31 @@ fixpoint_init( fixpoint_t *val, uint32_t whole, uint32_t frac, bool negative ) {
 
 uint32_t
 fixpoint_get_whole( const fixpoint_t *val ) {
-
+//returns the field value of val after initialization
   return (*val).whole;
 }
 
 uint32_t
 fixpoint_get_frac( const fixpoint_t *val ) {
+//returns the frac value of val after initialization
   return (*val).frac;
 }
 
 bool
 fixpoint_is_negative( const fixpoint_t *val ) {
+  //returns neg value of val after initalizaiton, where we already checked for 0 in the whole and 0 in the fraction
   return (*val).negative;
   
 }
 
 void
 fixpoint_negate( fixpoint_t *val ) {
+  //if whole and frac are 0 it is not negative
   if(val->whole == 0 && val->frac ==0){
     val->negative= false;
   }
 
+  //switch the negative sign
   else{
     val->negative= !val->negative;
   }
