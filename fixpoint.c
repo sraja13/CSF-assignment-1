@@ -63,25 +63,48 @@ void fixpoint_negate(fixpoint_t *val) {
 
 result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
                       const fixpoint_t *right) {
-  // TODO: implement
 
   uint32_t fracSum = left->frac + right->frac;
-  uint32_t fracCarry = (fracSum < left->frac) ? 1 : 0;
+  uint32_t carry = (fracSum < left->frac) ? 1 : 0;
 
-  uint32_t wholeSum = left->whole + right->whole;
-  uint32_t wholeCarry = (wholeSum < left->whole) ? 1 : 0;
-  wholeSum += fracCarry;
+  uint32_t wholeSum = left->whole + right->whole + carry;
 
   result->frac = fracSum;
-    result->whole = wholeSum;
-    result->negative = true;
-  if (wholeCarry || (fracCarry && wholeSum == left->whole)) {
-    result->negative = true;
-    return RESULT_OVERFLOW;
+  result->whole = wholeSum;
+
+  // Oveflow threshold
+  const uint32_t threshold = 2147483647; // 2^(w-1) -1
+
+  bool overflow = false;
+  if (left->negative == right->negative) {
+    // same sign → check for signed overflow
+    if (!left->negative) {
+      // positive + positive
+      if (wholeSum > threshold || wholeSum < left->whole) {
+        overflow = true;
+        result->negative = true; // it becomes negative (overflow)
+      } else {
+        result->negative = false;
+      }
+    } else {
+      // negative + negative
+      if (wholeSum > threshold || wholeSum < left->whole) {
+        overflow = true;
+        result->negative = false; // becomes positive (negatve overflow)
+      } else {
+        result->negative = true;
+      }
+    }
   } else {
-    result->negative = false;
-    return RESULT_OK;
+    // opposite signs → cannot overflow
+    if (left->whole > right->whole ||
+        (left->whole == right->whole && left->frac >= right->frac)) {
+      result->negative = left->negative;
+    } else {
+      result->negative = right->negative;
+    }
   }
+  return overflow ? RESULT_OVERFLOW : RESULT_OK;
 }
 
 result_t fixpoint_sub(fixpoint_t *result, const fixpoint_t *left,
