@@ -65,23 +65,24 @@ result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
                       const fixpoint_t *right) {
 
   uint32_t fracSum = left->frac + right->frac;
-  uint32_t carry = (fracSum < left->frac) ? 1 : 0;
+  uint32_t carry = (fracSum < left->frac) ? 1 : 0; // calculate carry
 
   uint32_t wholeSum = left->whole + right->whole + carry;
-
+  // reuslt is the sum
   result->frac = fracSum;
   result->whole = wholeSum;
 
-  // Oveflow threshold
+  // Oveflow threshold for 32 bit integer
   const uint32_t threshold = 2147483647; // 2^(w-1) -1
 
   bool overflow = false;
-  if (left->negative == right->negative) {
+
+  if (left->negative == right->negative) { // same sign = possible overflow
     // same sign → check for signed overflow
     if (!left->negative) {
       // positive + positive
       if (wholeSum > threshold || wholeSum < left->whole) {
-        overflow = true;
+        overflow = true;         // sum exceeds threshold
         result->negative = true; // it becomes negative (overflow)
       } else {
         result->negative = false;
@@ -97,7 +98,7 @@ result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
     }
   } else {
     // opposite signs → cannot overflow
-    if (left->whole > right->whole ||
+    if (left->whole > right->whole || // greater operand determines if negative
         (left->whole == right->whole && left->frac >= right->frac)) {
       result->negative = left->negative;
     } else {
