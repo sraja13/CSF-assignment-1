@@ -20,36 +20,39 @@ uint32_t addition_Whole(uint32_t left, uint32_t right, uint32_t *carry) {
   return left + right + *carry;
 }
 
-bool sameOperator_Overflow(fixpoint_t *result, const fixpoint_t *left,
-                           const fixpoint_t *right, uint32_t whole) {
+bool positive_Overflow(fixpoint_t *result, uint32_t whole, uint32_t leftWhole) {
   // Overflow threshold for 32 bit integer
   const uint32_t threshold = 2147483647; // 2^(w-1) -1
 
-  bool overflow = false;
-
-  if (!left->negative) {
-    // positive + positive
-    if (whole > threshold || whole < left->whole) {
-      overflow = true;         // sum exceeds threshold
-      result->negative = true; // it becomes negative (overflow)
-    } else {
-      result->negative = false;
-    }
+  if (whole > threshold || whole < leftWhole) {
+    result->negative = true; // it becomes negative (overflow)
+    return true;             // sum exceeds threshold
   } else {
-    // negative + negative
-    if (whole > threshold || whole < left->whole) {
-      overflow = true;
-      result->negative = false; // becomes positive (negatve overflow)
-    } else {
-      result->negative = true;
-    }
+    result->negative = false;
+    return false;
   }
-  return overflow;
+}
+bool negative_Overflow(fixpoint_t *result, uint32_t whole, uint32_t leftWhole,
+                       uint32_t rightWhole) {
+  const uint32_t threshold = 2147483647;
+  const uint32_t negMin = 2147483648; //-2^31
+  // edge case: -max goes below -2^31  (min is 1 more than max)
+  if (leftWhole == negMin  && rightWhole == threshold) {
+    result->negative = true; // negative overflow
+    return true;
+  }
+ 
+ if (whole > threshold || whole < leftWhole) {
+    result->negative = false; // becomes positive (negatve overflow)
+    return true;
+  }
+  result->negative = true;
+  return false;
 }
 
 void diffOperator(fixpoint_t *result, const fixpoint_t *left,
-                          const fixpoint_t *right) {
-  // detemrine if result is negative with diff operaters 
+                  const fixpoint_t *right) {
+  // detemrine if result is negative with diff operaters
   if (left->whole > right->whole || // greater operand determines if negative
       (left->whole == right->whole && left->frac >= right->frac)) {
     result->negative = left->negative;
@@ -117,8 +120,13 @@ result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
   bool overflow = false;
 
   if (left->negative == right->negative) { // same sign = possible overflow
-    overflow = sameOperator_Overflow(result, left, right, result->whole);
-  } else { // check if result is negative or positive 
+    if (!left->negative) {
+      overflow = positive_Overflow(result, result->whole, left->whole);
+    } else {
+      overflow =
+          negative_Overflow(result, result->whole, left->whole, right->whole);
+    }
+  } else { // check if result is negative or positive
     diffOperator(result, left, right);
   }
   return overflow ? RESULT_OVERFLOW : RESULT_OK;
@@ -126,11 +134,28 @@ result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
 
 result_t fixpoint_sub(fixpoint_t *result, const fixpoint_t *left,
                       const fixpoint_t *right) {
+  uint32_t carry = 0;
   // invert second operand
   fixpoint_t negRight = *right; // copy
   fixpoint_negate(&negRight);   // negate right
 
-  return fixpoint_add(result, left, &negRight);
+ // (a + ~b) call same fixpoint_add methods
+  result->frac = addition_Frac(left->frac, negRight.frac, &carry);
+  result->whole = addition_Whole(left->whole,negRight.whole, &carry);
+
+  bool overflow = false;
+
+  if (left->negative == negRight.negative) { // same sign = possible overflow
+    if (!left->negative) {
+    overflow = positive_Overflow(result, result->whole, left->whole);
+  } else {
+    overflow = negative_Overflow(result, result->whole, left->whole, negRight.whole);
+ }
+} else { // check if result is negative or positive
+    diffOperator(result, left, &negRight);
+  }
+
+  return overflow ? RESULT_OVERFLOW : RESULT_OK;
 }
 
 result_t fixpoint_mul(fixpoint_t *result, const fixpoint_t *left,
