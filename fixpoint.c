@@ -32,24 +32,20 @@ bool positive_Overflow(fixpoint_t *result, uint32_t whole, uint32_t leftWhole) {
     return false;
   }
 }
-bool negative_Overflow(fixpoint_t *result, uint32_t whole, uint32_t leftWhole,
-                       uint32_t rightWhole) {
+bool negative_Overflow(fixpoint_t *result, uint32_t whole, uint32_t leftWhole) {
   const uint32_t threshold = 2147483647;
-  const uint32_t negMin = 2147483648; //-2^31
-  // edge case: -max goes below -2^31  (min is 1 more than max)
-  if (leftWhole == negMin  && rightWhole == threshold) {
-    result->negative = true; // negative overflow
+
+  if (whole == 0) { // -min - max
+    result->negative = false;
     return true;
   }
- 
- if (whole > threshold || whole < leftWhole) {
+  if (whole > threshold || whole < leftWhole) {
     result->negative = false; // becomes positive (negatve overflow)
     return true;
   }
   result->negative = true;
   return false;
 }
-
 void diffOperator(fixpoint_t *result, const fixpoint_t *left,
                   const fixpoint_t *right) {
   // detemrine if result is negative with diff operaters
@@ -123,8 +119,7 @@ result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
     if (!left->negative) {
       overflow = positive_Overflow(result, result->whole, left->whole);
     } else {
-      overflow =
-          negative_Overflow(result, result->whole, left->whole, right->whole);
+      overflow = negative_Overflow(result, result->whole, left->whole);
     }
   } else { // check if result is negative or positive
     diffOperator(result, left, right);
@@ -139,19 +134,19 @@ result_t fixpoint_sub(fixpoint_t *result, const fixpoint_t *left,
   fixpoint_t negRight = *right; // copy
   fixpoint_negate(&negRight);   // negate right
 
- // (a + ~b) call same fixpoint_add methods
+  // (a + ~b) call same fixpoint_add methods
   result->frac = addition_Frac(left->frac, negRight.frac, &carry);
-  result->whole = addition_Whole(left->whole,negRight.whole, &carry);
+  result->whole = addition_Whole(left->whole, negRight.whole, &carry);
 
   bool overflow = false;
 
   if (left->negative == negRight.negative) { // same sign = possible overflow
     if (!left->negative) {
-    overflow = positive_Overflow(result, result->whole, left->whole);
-  } else {
-    overflow = negative_Overflow(result, result->whole, left->whole, negRight.whole);
- }
-} else { // check if result is negative or positive
+      overflow = positive_Overflow(result, result->whole, left->whole);
+    } else {
+      overflow = negative_Overflow(result, result->whole, left->whole);
+    }
+  } else { // check if result is negative or positive
     diffOperator(result, left, &negRight);
   }
 
