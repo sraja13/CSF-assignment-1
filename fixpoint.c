@@ -13,7 +13,7 @@
 // step 1 of add
 uint32_t addition_Frac(uint32_t left, uint32_t right, uint32_t *carry) {
   uint32_t sum = left + right;
-  *carry = (sum < left) ? 1 : 0; //step 2 of add
+  *carry = (sum < left) ? 1 : 0; // step 2 of add
   return sum;
 }
 
@@ -48,7 +48,7 @@ bool negative_Overflow(fixpoint_t *result, uint32_t whole, uint32_t leftWhole) {
   return false;
 }
 void magnitude(fixpoint_t *result, const fixpoint_t *left,
-                  const fixpoint_t *right) {
+               const fixpoint_t *right) {
   // detemrine if result is negative with diff operaters
   if (left->whole > right->whole || // greater operand determines if negative
       (left->whole == right->whole && left->frac >= right->frac)) {
@@ -122,7 +122,7 @@ result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
     } else {
       overflow = negative_Overflow(result, result->whole, left->whole);
     }
-  } else { // check if result is negative or positive
+  } else {                          // check if result is negative or positive
     magnitude(result, left, right); // overflow not possible
   }
   return overflow ? RESULT_OVERFLOW : RESULT_OK;
@@ -131,19 +131,24 @@ result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
 result_t fixpoint_sub(fixpoint_t *result, const fixpoint_t *left,
                       const fixpoint_t *right) {
   // invert second operand
-  fixpoint_t negRight = *right; // copy
-  fixpoint_negate(&negRight);   // negate right
+  fixpoint_t negRight = *right;                 // copy
+  fixpoint_negate(&negRight);                   // negate right
   return fixpoint_add(result, left, &negRight); // call add lft + -right
 }
 
 result_t fixpoint_mul(fixpoint_t *result, const fixpoint_t *left,
                       const fixpoint_t *right) {
   // TODO: implement
-
 }
 
 int fixpoint_compare(const fixpoint_t *left, const fixpoint_t *right) {
-  // TODO: implement
+
+  if (left->whole != right->whole) { // not equal then comapre
+    return (left->whole < right->whole) ? -1 : 1;
+  } // if whole is equal check frac
+  return (left->frac < right->frac)   ? -1
+         : (left->frac > right->frac) ? 1
+                                      : 0; // 0 when both are false
 }
 
 void fixpoint_format_hex(fixpoint_str_t *s, const fixpoint_t *val) {
