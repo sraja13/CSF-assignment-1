@@ -10,14 +10,15 @@
 ////////////////////////////////////////////////////////////////////////
 
 // add helper functions
+// step 1 of add
 uint32_t addition_Frac(uint32_t left, uint32_t right, uint32_t *carry) {
   uint32_t sum = left + right;
-  *carry = (sum < left) ? 1 : 0;
+  *carry = (sum < left) ? 1 : 0; //step 2 of add
   return sum;
 }
 
 uint32_t addition_Whole(uint32_t left, uint32_t right, uint32_t *carry) {
-  return left + right + *carry;
+  return left + right + *carry; // step 3 of add
 }
 
 bool positive_Overflow(fixpoint_t *result, uint32_t whole, uint32_t leftWhole) {
@@ -46,7 +47,7 @@ bool negative_Overflow(fixpoint_t *result, uint32_t whole, uint32_t leftWhole) {
   result->negative = true;
   return false;
 }
-void diffOperator(fixpoint_t *result, const fixpoint_t *left,
+void magnitude(fixpoint_t *result, const fixpoint_t *left,
                   const fixpoint_t *right) {
   // detemrine if result is negative with diff operaters
   if (left->whole > right->whole || // greater operand determines if negative
@@ -122,40 +123,23 @@ result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
       overflow = negative_Overflow(result, result->whole, left->whole);
     }
   } else { // check if result is negative or positive
-    diffOperator(result, left, right);
+    magnitude(result, left, right); // overflow not possible
   }
   return overflow ? RESULT_OVERFLOW : RESULT_OK;
 }
 
 result_t fixpoint_sub(fixpoint_t *result, const fixpoint_t *left,
                       const fixpoint_t *right) {
-  uint32_t carry = 0;
   // invert second operand
   fixpoint_t negRight = *right; // copy
   fixpoint_negate(&negRight);   // negate right
-
-  // (a + ~b) call same fixpoint_add methods
-  result->frac = addition_Frac(left->frac, negRight.frac, &carry);
-  result->whole = addition_Whole(left->whole, negRight.whole, &carry);
-
-  bool overflow = false;
-
-  if (left->negative == negRight.negative) { // same sign = possible overflow
-    if (!left->negative) {
-      overflow = positive_Overflow(result, result->whole, left->whole);
-    } else {
-      overflow = negative_Overflow(result, result->whole, left->whole);
-    }
-  } else { // check if result is negative or positive
-    diffOperator(result, left, &negRight);
-  }
-
-  return overflow ? RESULT_OVERFLOW : RESULT_OK;
+  return fixpoint_add(result, left, &negRight); // call add lft + -right
 }
 
 result_t fixpoint_mul(fixpoint_t *result, const fixpoint_t *left,
                       const fixpoint_t *right) {
   // TODO: implement
+
 }
 
 int fixpoint_compare(const fixpoint_t *left, const fixpoint_t *right) {
