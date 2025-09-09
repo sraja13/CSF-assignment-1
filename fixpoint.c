@@ -57,10 +57,17 @@ void magnitude(fixpoint_t *result, const fixpoint_t *left,
     result->negative = right->negative;
   }
 }
-static uint64_t magnitudeFactor(const fixpoint_t *val) {
-uint64_t highPart = (uint64_t)val->whole << 32;
-  uint64_t lowPart = (uint64_t)val->frac;
-  return  highPart + lowPart;
+uint64_t multiplyHighLow(const fixpoint_t *left, const fixpoint_t *right) {
+  // high and low 32-bit parts factors
+  uint64_t highLeftPart = (uint64_t)left->whole;
+  uint64_t lowLeftPart = (uint64_t)left->frac;
+  uint64_t highRightPart = (uint64_t)right->whole;
+  uint64_t lowRightPart = (uint64_t)right->frac;
+
+  uint64_t PRS = (lowLeftPart * lowRightPart) >> 32; // fraction product down to 32 bits
+  uint64_t TUV = highLeftPart * lowRightPart + lowLeftPart * highRightPart; // whole and fractional
+  uint64_t productWhole = highLeftPart * highRightPart; // whole product
+  return (productWhole << 32) + TUV + PRS;
 }
 ////////////////////////////////////////////////////////////////////////
 // Public API functions
@@ -143,11 +150,16 @@ result_t fixpoint_sub(fixpoint_t *result, const fixpoint_t *left,
 
 result_t fixpoint_mul(fixpoint_t *result, const fixpoint_t *left,
                       const fixpoint_t *right) {
-  // the factors
-  uint64_t leftMagnitude = magnitudeFactor(left);
-  uint64_t rightMagnitide = magnitudeFactor(right);
- 
+  uint64_t product = multiplyHighLow(left, right); // 64 bit integr product
 
+  result->whole = (uint32_t)(product >> 32);
+  result->frac = (uint32_t)product;
+  result->negative = left->negative ^ right->negative; // xor
+
+  if (result->whole == 0 && result->frac == 0) { // if 0 case
+    result->negative = false;
+  }
+  return RESULT_OK;
 }
 
 int fixpoint_compare(const fixpoint_t *left, const fixpoint_t *right) {
