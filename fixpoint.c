@@ -9,7 +9,7 @@
 // if you want to be able to write unit tests for them
 ////////////////////////////////////////////////////////////////////////
 
-// add helper functions
+// fixpoint add and sub  helper functions
 // step 1 of add
 uint32_t addition_Frac(uint32_t left, uint32_t right, uint32_t *carry) {
   uint32_t sum = left + right;
@@ -57,6 +57,7 @@ void magnitude(fixpoint_t *result, const fixpoint_t *left,
     result->negative = right->negative;
   }
 }
+// fixpoint_mul helper
 uint64_t multiplyHighLow(const fixpoint_t *left, const fixpoint_t *right) {
   // high and low 32-bit parts factors
   uint64_t highLeftPart = (uint64_t)left->whole;
@@ -68,6 +69,31 @@ uint64_t multiplyHighLow(const fixpoint_t *left, const fixpoint_t *right) {
   uint64_t TUV = highLeftPart * lowRightPart + lowLeftPart * highRightPart; // whole and fractional
   uint64_t productWhole = highLeftPart * highRightPart; // whole product
   return (productWhole << 32) + TUV + PRS;
+}
+// fixpoint_format_hex Helper
+static int formatFracHex(char *buffer, size_t size, uint32_t frac) {
+int fracLength = 0;  // num of chars
+
+    if (frac == 0) { // if fraction is zero: defualt sequence (.0) 
+        buffer[fracLength++] = '.';
+            buffer[fracLength++] = '0';
+          buffer[fracLength] = '\0';
+} else { // non-zero
+        char fracBuffer[9]; // 8 hex digits + null
+        snprintf(fracBuffer, sizeof(fracBuffer), "%08x", frac);
+
+        // Trim trailing zeros
+        int trim = 8;
+        while (trim > 1 && fracBuffer[trim - 1] == '0') trim--;
+
+        buffer[fracLength++] = '.';             // append decimal
+        for (int i = 0; i < trim; i++) {
+            buffer[fracLength++] = fracBuffer[i];  // append frac digits
+        }
+        buffer[fracLength] = '\0'; // null terminator
+    }
+
+    return fracLength; // number of characters written
 }
 ////////////////////////////////////////////////////////////////////////
 // Public API functions
@@ -173,7 +199,16 @@ int fixpoint_compare(const fixpoint_t *left, const fixpoint_t *right) {
 }
 
 void fixpoint_format_hex(fixpoint_str_t *s, const fixpoint_t *val) {
-  // TODO: implement
+    char buffer[FIXPOINT_STR_MAX_SIZE]; //buffer
+    int hexString = 0;
+
+    if (val->negative)  buffer[hexString++] = '-';
+    // write whole part in hex
+    hexString += snprintf(buffer + hexString, sizeof(buffer) - hexString, "%x", val->whole);
+    // write fractional partin hex
+    hexString += formatFracHex(buffer + hexString, sizeof(buffer) - hexString, val->frac);
+    // copy full hexidecimal into stuct
+    snprintf(s->str, FIXPOINT_STR_MAX_SIZE, "%s", buffer);
 }
 
 bool fixpoint_parse_hex(fixpoint_t *val, const fixpoint_str_t *s) {
