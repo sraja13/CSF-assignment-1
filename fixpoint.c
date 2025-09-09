@@ -57,6 +57,11 @@ void magnitude(fixpoint_t *result, const fixpoint_t *left,
     result->negative = right->negative;
   }
 }
+static uint64_t magnitudeFactor(const fixpoint_t *val) {
+uint64_t highPart = (uint64_t)val->whole << 32;
+  uint64_t lowPart = (uint64_t)val->frac;
+  return  highPart + lowPart;
+}
 ////////////////////////////////////////////////////////////////////////
 // Public API functions
 ////////////////////////////////////////////////////////////////////////
@@ -138,7 +143,11 @@ result_t fixpoint_sub(fixpoint_t *result, const fixpoint_t *left,
 
 result_t fixpoint_mul(fixpoint_t *result, const fixpoint_t *left,
                       const fixpoint_t *right) {
-  // TODO: implement
+  // the factors
+  uint64_t leftMagnitude = magnitudeFactor(left);
+  uint64_t rightMagnitide = magnitudeFactor(right);
+ 
+
 }
 
 int fixpoint_compare(const fixpoint_t *left, const fixpoint_t *right) {
