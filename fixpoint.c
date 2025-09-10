@@ -159,6 +159,8 @@ void fixpoint_negate(fixpoint_t *val) {
 
 // stop here for milestone 1
 
+
+// helper function returns if magnitude is zero or not
 static inline bool is_zero_mag(const fixpoint_t *x) {
   return x->whole == 0 && x->frac == 0;
 }
@@ -194,16 +196,16 @@ result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
   } else {
     // Opposite, signs subtract smaller magnitude from larger 
     // Compare magnitudes ignoring sign
-    int cmp;
+    int compare;
     if (left->whole != right->whole) {
-      cmp = (left->whole < right->whole) ? -1 : 1;
+      compare = (left->whole < right->whole) ? -1 : 1;
     } else if (left->frac != right->frac) {
-      cmp = (left->frac  < right->frac ) ? -1 : 1;
+      compare = (left->frac  < right->frac ) ? -1 : 1;
     } else {
-      cmp = 0;
+      compare = 0;
     }
 
-    if (cmp == 0) {
+    if (compare == 0) {
       // x + (−x) => +0
       result->whole = 0;
       result->frac  = 0;
@@ -211,22 +213,24 @@ result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
       return RESULT_OK;
     }
 
-    // Identify larger and smaller magnitudes
-    const fixpoint_t *larger  = (cmp > 0) ? left  : right;
-    const fixpoint_t *smaller = (cmp > 0) ? right : left;
+    // finding larger and smaller magnitudes
+    const fixpoint_t *larger  = (compare > 0) ? left  : right;
+    const fixpoint_t *smaller = (compare > 0) ? right : left;
 
-    uint64_t Lw = (uint64_t)larger->whole,  Lf = (uint64_t)larger->frac;
-    uint64_t Sw = (uint64_t)smaller->whole, Sf = (uint64_t)smaller->frac;
+    uint64_t largerwhole = (uint64_t)larger->whole;
+    uint64_t largerfrac = (uint64_t)larger->frac;
+    uint64_t smallerwhole = (uint64_t)smaller->whole;
+    uint64_t smallerfrac = (uint64_t)smaller->frac;
 
     uint32_t out_frac, out_whole;
-    if (Lf >= Sf) {
+    if (largerfrac >= smallerfrac) {
       // no borrow from whole
-      out_frac  = (uint32_t)(Lf - Sf);
-      out_whole = (uint32_t)(Lw - Sw);
+      out_frac  = (uint32_t)(largerfrac - smallerfrac);
+      out_whole = (uint32_t)(largerwhole - smallerwhole);
     } else {
       // borrow 1 whole (adds 2^32 to fractional part)
-      out_frac  = (uint32_t)((Lf + (1ULL << 32)) - Sf);
-      out_whole = (uint32_t)((Lw - 1) - Sw);
+      out_frac  = (uint32_t)((largerfrac + (1ULL << 32)) - smallerfrac);
+      out_whole = (uint32_t)((largerwhole - 1) - smallerwhole);
     }
 
     result->whole    = out_whole;
@@ -251,7 +255,7 @@ result_t fixpoint_sub(fixpoint_t *result, const fixpoint_t *left, const fixpoint
 
 result_t fixpoint_mul(fixpoint_t *result, const fixpoint_t *left,
                       const fixpoint_t *right) {
-  uint64_t product = multiplyHighLow(left, right); // 64 bit integr product
+  /*uint64_t product = multiplyHighLow(left, right); // 64 bit integr product
 
   result->whole = (uint32_t)(product >> 32);
   result->frac = (uint32_t)product;
@@ -260,7 +264,61 @@ result_t fixpoint_mul(fixpoint_t *result, const fixpoint_t *left,
   if (result->whole == 0 && result->frac == 0) { // if 0 case
     result->negative = false;
   }
-  return RESULT_OK;
+  return RESULT_OK;*/
+
+   // Normalize inputs for sign logic: treat "-0" as numeric zero
+
+  bool lneg = left->negative  && !is_zero_mag(left);
+  bool rneg = right->negative && !is_zero_mag(right);
+  bool out_sign = (lneg ^ rneg);
+
+   // Split 64-bit magnitudes into whole (A,B) and frac (a,b)
+
+  uint64_t A = (uint64_t)left->whole;
+  uint64_t a = (uint64_t)left->frac;
+  uint64_t B = (uint64_t)right->whole;
+  uint64_t b = (uint64_t)right->frac;
+  
+  uint64_t p0 = a * b; 
+  uint64_t p1 = a * B; 
+  uint64_t p2 = A * b;
+  uint64_t p3 = A * B;
+
+  uint32_t x0_low = (uint32_t)(p0 & 0xFFFFFFFFu); // bits lost by >>32
+  bool underflow = (x0_low != 0);
+
+  uint64_t x1 = (p0 >> 32)
+              + (p1 & 0xFFFFFFFFu)
+              + (p2 & 0xFFFFFFFFu);
+
+  uint64_t x2 = (p1 >> 32)
+              + (p2 >> 32)
+              + p3;
+
+  uint32_t out_frac = (uint32_t)(x1 & 0xFFFFFFFFu);
+  uint64_t carry1   = (x1 >> 32);
+
+  uint64_t tmp = x2 + carry1;                 // <= 0xFFFFFFFFFFFFFFFF (no 64-bit overflow)
+  uint32_t out_whole = (uint32_t)(tmp & 0xFFFFFFFFu);
+  bool overflow  = ((tmp >> 32) != 0);
+
+  result->whole = out_whole;
+  result->frac  = out_frac;
+  result->negative = out_sign;
+  
+
+if (result->whole == 0 && result->frac == 0) {
+    if (!(underflow || overflow)) {
+      result->negative = false;
+    } else {
+      result->negative = out_sign; // keep the "would-have-been" sign
+    }
+  }
+
+  result_t flags = RESULT_OK;
+  if (overflow)  flags |= RESULT_OVERFLOW;
+  if (underflow) flags |= RESULT_UNDERFLOW;
+  return flags;
 }
 
 int fixpoint_compare(const fixpoint_t *left, const fixpoint_t *right) {
