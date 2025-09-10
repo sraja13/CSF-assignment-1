@@ -366,7 +366,9 @@ bool fixpoint_parse_hex(fixpoint_t *val, const fixpoint_str_t *s) {
   } else {
     val->negative = false;
   }
-  
+
+  int whole_start = skip;
+
   // Parse whole part, which requires 1..8 hex digits
 
   if (sscanf(s->str + skip, "%8x%n", &val->whole, &matchedWhole) != 1) {
@@ -376,7 +378,16 @@ bool fixpoint_parse_hex(fixpoint_t *val, const fixpoint_str_t *s) {
   if(matchedWhole < 1) {
     // Must have at least one hex digit in the whole part
     return false;
+
   }
+
+
+  if (matchedWhole >= 2 &&
+      s->str[whole_start] == '0' &&
+      (s->str[whole_start + 1] == 'x' || s->str[whole_start + 1] == 'X')) {
+    return false;
+  }
+
   skip+= matchedWhole;//go past whole part
   //next has to be the dot
   if (s->str[skip] != '.') {
@@ -384,14 +395,27 @@ bool fixpoint_parse_hex(fixpoint_t *val, const fixpoint_str_t *s) {
   }
   skip++;
 
+  int frac_start = skip;
+
+
   if (!parseFracHex(&val->frac, s->str + skip, &matchedFrac)){
     return false;
   
   }
-  
+
   if (matchedFrac < 1 || matchedFrac > 8) {
       return false;
     }
+
+  //edge case
+  //dont allow 0x / 0X prefix in frac
+  if (matchedFrac >= 2 &&
+      s->str[frac_start] == '0' &&
+      (s->str[frac_start + 1] == 'x' || s->str[frac_start + 1] == 'X')) {
+    return false;
+  }
+  
+  
 
   skip += matchedFrac; // move skip past whole part
 
@@ -402,9 +426,9 @@ bool fixpoint_parse_hex(fixpoint_t *val, const fixpoint_str_t *s) {
  
   
   // Lef talign short fractional field to 32 bits
-  if (matchedFrac < 8) {
+  /*if (matchedFrac < 8) {
     val->frac <<= (4 * (8 - matchedFrac));
-  }
+  }*/
 
   if (val->whole == 0 && val->frac == 0){ // edge case
     val->negative = false;
