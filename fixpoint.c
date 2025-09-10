@@ -174,11 +174,11 @@ result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
   if (lneg == rneg) {
     // Same signm add magnitudes 
     uint64_t frac_sum  = (uint64_t)left->frac + (uint64_t)right->frac;
-    uint64_t carry     = frac_sum >> 32; // 1 if fractional overflow
+    uint64_t carry = frac_sum >> 32; // 1 if fractional overflow
     uint64_t whole_sum = (uint64_t)left->whole + (uint64_t)right->whole + carry;
 
-    result->frac     = (uint32_t)(frac_sum  & 0xFFFFFFFFu);
-    result->whole    = (uint32_t)(whole_sum & 0xFFFFFFFFu);
+    result->frac = (uint32_t)(frac_sum  & 0xFFFFFFFFu);
+    result->whole= (uint32_t)(whole_sum & 0xFFFFFFFFu);
     // both signs same
     result->negative = lneg; 
 
@@ -233,8 +233,8 @@ result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
       out_whole = (uint32_t)((largerwhole - 1) - smallerwhole);
     }
 
-    result->whole    = out_whole;
-    result->frac     = out_frac;
+    result->whole = out_whole;
+    result->frac = out_frac;
     result->negative = larger->negative && !is_zero_mag(larger); // sign of larger magnitude
 
     // Normalizes if exact zero,  its never negative here
@@ -268,9 +268,9 @@ result_t fixpoint_mul(fixpoint_t *result, const fixpoint_t *left,
 
    // Normalize inputs for sign logic: treat "-0" as numeric zero
 
-  bool lneg = left->negative  && !is_zero_mag(left);
-  bool rneg = right->negative && !is_zero_mag(right);
-  bool out_sign = (lneg ^ rneg);
+  bool left_neg = left->negative  && !is_zero_mag(left);
+  bool right_neg = right->negative && !is_zero_mag(right);
+  bool out_sign = (left_neg ^ right_neg);
 
    // Split 64-bit magnitudes into whole (A,B) and frac (a,b)
 
@@ -287,18 +287,13 @@ result_t fixpoint_mul(fixpoint_t *result, const fixpoint_t *left,
   uint32_t x0_low = (uint32_t)(p0 & 0xFFFFFFFFu); // bits lost by >>32
   bool underflow = (x0_low != 0);
 
-  uint64_t x1 = (p0 >> 32)
-              + (p1 & 0xFFFFFFFFu)
-              + (p2 & 0xFFFFFFFFu);
-
-  uint64_t x2 = (p1 >> 32)
-              + (p2 >> 32)
-              + p3;
+  uint64_t x1 = (p0 >> 32)+ (p1 & 0xFFFFFFFFu)+ (p2 & 0xFFFFFFFFu);
+  uint64_t x2 = (p1 >> 32)+ (p2 >> 32)+ p3;
 
   uint32_t out_frac = (uint32_t)(x1 & 0xFFFFFFFFu);
-  uint64_t carry1   = (x1 >> 32);
+  uint64_t carry1= (x1 >> 32);
 
-  uint64_t tmp = x2 + carry1;                 // <= 0xFFFFFFFFFFFFFFFF (no 64-bit overflow)
+  uint64_t tmp = x2 + carry1; // <= 0xFFFFFFFFFFFFFFFF (no 64-bit overflow)
   uint32_t out_whole = (uint32_t)(tmp & 0xFFFFFFFFu);
   bool overflow  = ((tmp >> 32) != 0);
 
