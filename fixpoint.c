@@ -161,15 +161,84 @@ void fixpoint_negate(fixpoint_t *val) {
 
 result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
                       const fixpoint_t *right) {
-  uint32_t carry = 0;
+ uint32_t carry ;
+ /*
   // result is the sum
   result->frac = addition_Frac(left->frac, right->frac, &carry);
   result->whole = addition_Whole(left->whole, right->whole, &carry);
+   bool overflow = false;
+*/
+ 
 
-  bool overflow = false;
+  if (left->negative == right->negative) { 
+        // same sign = add magnitudes
+        uint64_t frac_sum = (uint64_t)left->frac + (uint64_t)right->frac;
+        carry = frac_sum >> 32;
+        //carriesinto whole
+        uint64_t whole_sum = (uint64_t)left->whole + (uint64_t)right->whole +carry;
+        result -> frac = (uint32_t)(frac_sum & 0xFFFFFFFFu);
+        result ->whole = (uint32_t)(whole_sum & 0xFFFFFFFu);
+        result->negative = left->negative;
+        //same sign as inputs
+        result_t flags = RESULT_OK;
+        if(whole_sum >>32) flags |= RESULT_OVERFLOW; 
+        //true 32 bit overflow.
 
-  if (left->negative == right->negative) { // same sign = possible overflow
-    if (!left->negative) {
+        if((result->whole==0 && result -> frac==0) && (flags==RESULT_OK)){
+          result->negative = false;
+        }
+        return flags;
+      }
+        else{
+    //subtract the magnitudes, largerMag - smallerMag
+    const fixpoint_t *larger = left;
+    const fixpoint_t *smaller = right;
+    //comparing the magnitudes
+    int compared;
+
+    if(larger -> whole != smaller-> whole) compared = (larger->whole<smaller->whole) ?-1:1;
+    if(larger -> frac != smaller -> frac) compared = (larger-> frac < smaller-> frac) ? -1 : 1;
+    else{
+      compared = 0;
+    }
+    
+    if(compared == 0){
+      result -> whole =0;
+      result -> frac = 0;
+      result -> negative = false;
+      return RESULT_OK;
+    }
+
+    if(compared<0) { larger = right; smaller = left;}
+
+    uint64_t largerwhole= (uint64_t) larger-> whole;
+    uint64_t largerfrac = (uint64_t) larger -> frac;
+    uint64_t smallerwhole = (uint64_t) smaller -> whole;
+    uint64_t smallerfrac = (uint64_t) smaller -> frac;
+
+    uint32_t out_frac;
+    uint32_t out_whole;
+
+    if (largerfrac >= smallerfrac){
+      out_frac = (uint32_t)(largerfrac - smallerfrac);
+      out_whole = (uint32_t)(largerwhole-smallerwhole);
+    } else{
+      out_frac  = (uint32_t)((largerfrac + (1ULL << 32)) - smallerfrac);
+      out_whole = (uint32_t)((largerwhole - 1) - smallerwhole);
+
+    }
+    result->whole    = out_whole;
+    result->frac     = out_frac;
+    result->negative = larger->negative;
+
+    if (result->whole == 0 && result->frac == 0) result->negative = false; // +0
+
+    return RESULT_OK; // no overflow when adding different signs
+
+    }
+  }
+
+    /*if (!left->negative) {
       overflow = positive_Overflow(result, result->whole, left->whole);
     } else {
       overflow = negative_Overflow(result, result->whole, left->whole);
@@ -177,11 +246,10 @@ result_t fixpoint_add(fixpoint_t *result, const fixpoint_t *left,
   } else {                          // check if result is negative or positive
     magnitude(result, left, right); // overflow not possible
   }
-  return overflow ? RESULT_OVERFLOW : RESULT_OK;
-}
+  return overflow ? RESULT_OVERFLOW : RESULT_OK;*/
 
-result_t fixpoint_sub(fixpoint_t *result, const fixpoint_t *left,
-                      const fixpoint_t *right) {
+
+result_t fixpoint_sub(fixpoint_t *result, const fixpoint_t *left, const fixpoint_t *right) {
   // invert second operand
   fixpoint_t negRight = *right;                 // copy
   fixpoint_negate(&negRight);                   // negate right
