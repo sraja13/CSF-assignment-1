@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 ////////////////////////////////////////////////////////////////////////
 // Helper functions
@@ -266,7 +267,7 @@ result_t fixpoint_mul(fixpoint_t *result, const fixpoint_t *left,
   }
   return RESULT_OK;*/
 
-   // Normalize inputs for sign logic: treat "-0" as numeric zero
+   // dealing with 0 edgecase for negatives
 
   bool left_neg = left->negative  && !is_zero_mag(left);
   bool right_neg = right->negative && !is_zero_mag(right);
@@ -343,9 +344,21 @@ void fixpoint_format_hex(fixpoint_str_t *s, const fixpoint_t *val) {
 }
 
 bool fixpoint_parse_hex(fixpoint_t *val, const fixpoint_str_t *s) {
+
+
+  if (s == NULL) return false;
+  //reject empty strings up front
+  if (s->str[0] == '\0') return false;
+
+
   int matchedWhole = 0; // hex digits matched
   int matchedFrac = 0;
   int skip = 0;
+
+  // dont allow leading whitespace or +
+  if (isspace((unsigned char)s->str[0]) || s->str[0] == '+') {
+    return false;
+  }
 
   if (s->str[0] == '-') { //check if negative
     val->negative = true;
@@ -353,21 +366,49 @@ bool fixpoint_parse_hex(fixpoint_t *val, const fixpoint_str_t *s) {
   } else {
     val->negative = false;
   }
+  
+  // Parse whole part, which requires 1..8 hex digits
 
-  // parse whole part
-  if (sscanf(s->str + skip, "%8x%n", &val->whole, &matchedWhole) != 1)
+  if (sscanf(s->str + skip, "%8x%n", &val->whole, &matchedWhole) != 1) {
     return false;
-  skip += matchedWhole; // move skip past whole part
+  }
+
+  if(matchedWhole < 1) {
+    // Must have at least one hex digit in the whole part
+    return false;
+  }
+  skip+= matchedWhole;//go past whole part
+  //next has to be the dot
+  if (s->str[skip] != '.') {
+    return false;
+  }
+  skip++;
+
+  if (!parseFracHex(&val->frac, s->str + skip, &matchedFrac)){
+    return false;
+  
+  }
+  
+  if (matchedFrac < 1 || matchedFrac > 8) {
+      return false;
+    }
+
+  skip += matchedFrac; // move skip past whole part
 
   // Parse fractional
-  if (s->str[skip] != '.') // decimal for fraction part
+  if (s->str[skip] != '\0'){ // decimal for fraction part
     return false;
-  skip++; // skip dot
-  if (!parseFracHex(&val->frac, s->str + skip, &matchedFrac))
-    return false;
+  }
+ 
+  
+  // Lef talign short fractional field to 32 bits
+  if (matchedFrac < 8) {
+    val->frac <<= (4 * (8 - matchedFrac));
+  }
 
-  if (val->whole == 0 && val->frac == 0) // edge case
+  if (val->whole == 0 && val->frac == 0){ // edge case
     val->negative = false;
+  }
 
   return true;
 }
