@@ -99,17 +99,7 @@ static int formatFracHex(char *buffer, size_t size, uint32_t frac) {
 
   return fracLength; // number of characters written
 }
-// parse hex Helper
-static bool parseFracHex(uint32_t *frac, const char *s, int *matchedFrac) {
-  if (sscanf(s, "%8x%n", frac, matchedFrac) != 1) // read up to 8 hex digits
-    return false;
- 
-  while (*matchedFrac < 8) { 
-    *frac <<= 4; // shift left by one hex digit
-    (*matchedFrac)++;
-  }
-  return true;
-}
+git 
 ////////////////////////////////////////////////////////////////////////
 // Public API functions
 ////////////////////////////////////////////////////////////////////////
