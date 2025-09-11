@@ -347,92 +347,71 @@ bool fixpoint_parse_hex(fixpoint_t *val, const fixpoint_str_t *s) {
 
 
   if (s == NULL) return false;
-  //reject empty strings up front
-  if (s->str[0] == '\0') return false;
 
+  const char *p = s->str;
+  if (*p == '\0') return false;// empty string
+  if (isspace((unsigned char)*p)) return false; //no whitespace leading
 
-  int matchedWhole = 0; // hex digits matched
-  int matchedFrac = 0;
-  int skip = 0;
+  // '-', '+' is not allowed 
+  bool neg = false;
+  if (*p == '-') { 
+    neg = true; ++p; }
+  else if (*p == '+') { 
+    return false; }
+  //Parse whole, 1..8 hex digits, no 0x/0X prefix allowed
+  uint32_t whole = 0;
+  int whole_digits = 0;
 
-  // dont allow leading whitespace or +
-  if (isspace((unsigned char)s->str[0]) || s->str[0] == '+') {
-    return false;
-  }
-
-  if (s->str[0] == '-') { //check if negative
-    val->negative = true;
-    skip = 1; // skip for parsing if negative
-  } else {
-    val->negative = false;
-  }
-
-  int whole_start = skip;
-
-  // Parse whole part, which requires 1..8 hex digits
-
-  if (sscanf(s->str + skip, "%8x%n", &val->whole, &matchedWhole) != 1) {
-    return false;
-  }
-
-  if(matchedWhole < 1) {
-    // Must have at least one hex digit in the whole part
-    return false;
-
-  }
-
-
-  if (matchedWhole >= 2 &&
-      s->str[whole_start] == '0' &&
-      (s->str[whole_start + 1] == 'x' || s->str[whole_start + 1] == 'X')) {
-    return false;
-  }
-
-  skip+= matchedWhole;//go past whole part
-  //next has to be the dot
-  if (s->str[skip] != '.') {
-    return false;
-  }
-  skip++;
-
-  int frac_start = skip;
-
-
-  if (!parseFracHex(&val->frac, s->str + skip, &matchedFrac)){
-    return false;
-  
-  }
-
-  if (matchedFrac < 1 || matchedFrac > 8) {
-      return false;
+  while (whole_digits < 8 && isxdigit((unsigned char)*p)) {
+    int d;
+    if (*p >= '0' && *p <= '9') d = *p - '0';
+    else {
+      char c = (char)tolower((unsigned char)*p);
+      if (c < 'a' || c > 'f') break;
+      d = 10 + (c - 'a');
     }
-
-  //edge case
-  //dont allow 0x / 0X prefix in frac
-  if (matchedFrac >= 2 &&
-      s->str[frac_start] == '0' &&
-      (s->str[frac_start + 1] == 'x' || s->str[frac_start + 1] == 'X')) {
-    return false;
+    whole = (whole << 4) | (uint32_t)d;
+    ++p; ++whole_digits;
   }
-  
+  if (whole_digits < 1) return false;// need at least one digit
+  if (whole_digits == 8 && isxdigit((unsigned char)*p)) return false; // >8 digits
+
+  // Next must be a dot
+  if (*p != '.') return false;
+  ++p;
   
 
-  skip += matchedFrac; // move skip past whole part
+  // Parse frac, 1..8 hex digits, then end of the string
+  uint32_t frac = 0;
+  int frac_digits = 0;
 
-  // Parse fractional
-  if (s->str[skip] != '\0'){ // decimal for fraction part
-    return false;
+  while (frac_digits < 8 && isxdigit((unsigned char)*p)) {
+    int d;
+    if (*p >= '0' && *p <= '9') d = *p - '0';
+    else {
+      char c = (char)tolower((unsigned char)*p);
+      if (c < 'a' || c > 'f') break;
+      d = 10 + (c - 'a');
+    }
+    frac = (frac << 4) | (uint32_t)d;
+    ++p; ++frac_digits;
   }
- 
-  
-  // Lef talign short fractional field to 32 bits
-  /*if (matchedFrac < 8) {
-    val->frac <<= (4 * (8 - matchedFrac));
-  }*/
+  if (frac_digits < 1) return false;// need at least one frac digit
+  if (frac_digits == 8 && isxdigit((unsigned char)*p)) return false; // >8 digits
+  if (*p != '\0') return false; // no trailing junk
 
-  if (val->whole == 0 && val->frac == 0){ // edge case
-    val->negative = false;
+  // Left align fractional hex to 32 bits
+  if (frac_digits < 8) {
+    frac <<= 4 * (8 - frac_digits);
   }
 
+  // Normalize negative zero to +0
+  if (whole == 0 && frac == 0) {
+    neg = false;
+  }
+
+  val->whole = whole;
+  val->frac = frac;
+  val->negative = neg;
   return true;
 }
