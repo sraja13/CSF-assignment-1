@@ -58,6 +58,76 @@ void test_compare( TestObjs *objs );
 void test_format_hex( TestObjs *objs );
 void test_parse_hex( TestObjs *objs );
 // TODO: add additional test functions
+// fixpoint_add
+void test_add_frac_carry(TestObjs *objs);
+void test_add_whole_overflow(TestObjs *objs);
+void test_add_large_but_fits(TestObjs *objs);
+void test_add_negative_overflow_to_negzero(TestObjs *objs);
+void test_add_cancel_to_zero(TestObjs *objs);
+void test_add_borrow_across_frac(TestObjs *objs);
+void test_add_subtract_no_borrow(TestObjs *objs);
+void test_add_sign_of_larger(TestObjs *objs);
+void test_add_negative_zero_input(TestObjs *objs);
+void test_add_commutativity(TestObjs *objs);
+void test_add_mixed_carry(TestObjs *objs);
+void test_add_equal_fraction_cancel(TestObjs *objs);
+void test_add_two_negatives(TestObjs *objs);
+void test_add_cancel_whole_frac_remains(TestObjs *objs);
+void test_add_frac_to_whole(TestObjs *objs);
+void test_add_large_fraction(TestObjs *objs);
+void test_add_associativity(TestObjs *objs);
+void test_add_identity_with_zero(TestObjs *objs);
+void test_add_min_fraction(TestObjs *objs);
+void test_add_max_plus_zero(TestObjs *objs);
+
+// fixpoint_sub
+void test_sub_self_cancel(TestObjs *objs);
+void test_sub_borrow_across_frac(TestObjs *objs);
+void test_sub_negative_result(TestObjs *objs);
+void test_sub_no_false_overflow(TestObjs *objs);
+void test_sub_negative_overflow_to_negzero(TestObjs *objs);
+void test_sub_antisymmetry(TestObjs *objs);
+void test_sub_identities(TestObjs *objs);
+void test_sub_equal_fracs(TestObjs *objs);
+void test_sub_fraction_only(TestObjs *objs);
+void test_sub_double_negative(TestObjs *objs);
+
+
+// fixpoint_mul
+void test_mul_basic(TestObjs *objs);
+void test_mul_by_zero(TestObjs *objs);
+void test_mul_pos_neg(TestObjs *objs);
+void test_mul_neg_neg(TestObjs *objs);
+void test_mul_underflow(TestObjs *objs);
+void test_mul_overflow(TestObjs *objs);
+void test_mul_negative_zero(TestObjs *objs);
+void test_mul_fraction_fraction(TestObjs *objs);
+void test_mul_max(TestObjs *objs);
+void test_mul_power_of_two_fracs(TestObjs *objs);
+void test_mul_identity(TestObjs *objs);
+void test_mul_associativity(TestObjs *objs);
+void test_mul_min_times_two(TestObjs *objs);
+void test_mul_tiny_underflow(TestObjs *objs);
+
+// fixpoint_format_hex
+void test_format_min_fraction(TestObjs *objs);
+void test_format_max_fraction(TestObjs *objs);
+void test_format_trim_trailing_zeros(TestObjs *objs);
+void test_format_negative_fraction(TestObjs *objs);
+void test_format_negative_zero(TestObjs *objs);
+
+// fixpoint_parse_hex 
+void test_parse_mixed_case(TestObjs *objs);
+void test_parse_leading_zeros(TestObjs *objs);
+void test_parse_max_length(TestObjs *objs);
+void test_parse_normalizes_negative_zero(TestObjs *objs);
+void test_parse_invalid_missing_frac(TestObjs *objs);
+void test_parse_invalid_missing_whole(TestObjs *objs);
+void test_parse_invalid_too_many_digits(TestObjs *objs);
+void test_parse_invalid_trailing(TestObjs *objs);
+void test_parse_invalid_plus_or_space(TestObjs *objs);
+void test_parse_invalid_hex_prefix(TestObjs *objs);
+
 
 int main( int argc, char **argv ) {
   if ( argc > 1 )
@@ -78,23 +148,7 @@ int main( int argc, char **argv ) {
   TEST( test_parse_hex );
   // TODO: call additional test functions
 
-  TEST_FINI();
-}
-
-TestObjs *setup( void ) {
-  TestObjs *objs = (TestObjs *) malloc( sizeof( TestObjs ) );
-
-  TEST_FIXPOINT_INIT( &objs->zero, 0, 0, false );
-  TEST_FIXPOINT_INIT( &objs->one, 1, 0, false );
-  TEST_FIXPOINT_INIT( &objs->one_half, 0, 0x80000000, false );
-  TEST_FIXPOINT_INIT( &objs->max, 0xFFFFFFFF, 0xFFFFFFFF, false );
-  TEST_FIXPOINT_INIT( &objs->neg_three_eighths, 0, 0x60000000, true );
-  TEST_FIXPOINT_INIT( &objs->min, 0, 1, false );
-  TEST_FIXPOINT_INIT( &objs->one_and_one_half, 1, 0x80000000, false );
-  TEST_FIXPOINT_INIT( &objs->one_hundred, 100, 0, false );
-  TEST_FIXPOINT_INIT( &objs->neg_eleven, 11, 0, true );
-
-  //test_add test functions
+    //test_add test functions
   TEST( test_add_frac_carry );
   TEST( test_add_whole_overflow );
   TEST( test_add_large_but_fits );
@@ -115,7 +169,72 @@ TestObjs *setup( void ) {
   TEST( test_add_identity_with_zero );
   TEST( test_add_min_fraction );
   TEST( test_add_max_plus_zero );
+  //test_sub test functions
+  TEST( test_sub_self_cancel );
+  TEST( test_sub_borrow_across_frac );
+  TEST( test_sub_negative_result );
+  TEST( test_sub_no_false_overflow );
+  TEST( test_sub_negative_overflow_to_negzero );
+  TEST( test_sub_antisymmetry );
+  TEST( test_sub_identities );
+  TEST( test_sub_equal_fracs );
+  TEST( test_sub_fraction_only );
+  TEST( test_sub_double_negative );
 
+  //testing test_mul test functions
+  TEST( test_mul_basic );
+  TEST( test_mul_by_zero );
+  TEST( test_mul_pos_neg );
+  TEST( test_mul_neg_neg );
+  TEST( test_mul_underflow );
+  TEST( test_mul_overflow );
+  TEST( test_mul_negative_zero );
+  TEST( test_mul_fraction_fraction );
+  TEST( test_mul_max );
+  TEST( test_mul_power_of_two_fracs );
+  TEST( test_mul_identity );
+  TEST( test_mul_associativity );
+  TEST( test_mul_min_times_two );
+  TEST( test_mul_tiny_underflow );
+
+  // fixpoint_format_hextests
+  TEST(test_format_min_fraction);
+  TEST(test_format_max_fraction);
+  TEST(test_format_trim_trailing_zeros);
+  TEST(test_format_negative_fraction);
+  TEST(test_format_negative_zero);
+
+  // fixpoint_parse_hex valid tests
+  TEST(test_parse_mixed_case);
+  TEST(test_parse_leading_zeros);
+  TEST(test_parse_max_length);
+  TEST(test_parse_normalizes_negative_zero);
+  
+  // fixpoint_parse_hex imvalid tests
+  TEST(test_parse_invalid_missing_frac);
+  TEST(test_parse_invalid_missing_whole);
+  TEST(test_parse_invalid_too_many_digits);
+  TEST(test_parse_invalid_trailing);
+  TEST(test_parse_invalid_plus_or_space);
+  TEST(test_parse_invalid_hex_prefix);
+
+
+
+  TEST_FINI();
+}
+
+TestObjs *setup( void ) {
+  TestObjs *objs = (TestObjs *) malloc( sizeof( TestObjs ) );
+
+  TEST_FIXPOINT_INIT( &objs->zero, 0, 0, false );
+  TEST_FIXPOINT_INIT( &objs->one, 1, 0, false );
+  TEST_FIXPOINT_INIT( &objs->one_half, 0, 0x80000000, false );
+  TEST_FIXPOINT_INIT( &objs->max, 0xFFFFFFFF, 0xFFFFFFFF, false );
+  TEST_FIXPOINT_INIT( &objs->neg_three_eighths, 0, 0x60000000, true );
+  TEST_FIXPOINT_INIT( &objs->min, 0, 1, false );
+  TEST_FIXPOINT_INIT( &objs->one_and_one_half, 1, 0x80000000, false );
+  TEST_FIXPOINT_INIT( &objs->one_hundred, 100, 0, false );
+  TEST_FIXPOINT_INIT( &objs->neg_eleven, 11, 0, true );
 
   return objs;
 }
@@ -636,3 +755,378 @@ void test_add_max_plus_zero(TestObjs *objs) {
 }
 
 //test_sub tests:
+// self cancel to +0
+void test_sub_self_cancel(TestObjs *objs) {
+  fixpoint_t result;
+  ASSERT(fixpoint_sub(&result, &objs->one_and_one_half, &objs->one_and_one_half) == RESULT_OK);
+  ASSERT(result.whole == 0 && result.frac == 0 && result.negative == false);
+}
+
+// borrow across 
+void test_sub_borrow_across_frac(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 1, 0, false);    // 1.0
+  TEST_FIXPOINT_INIT(&b, 0, 0x1, false);  // 0.00000001
+
+  ASSERT(fixpoint_sub(&result, &a, &b) == RESULT_OK);
+  ASSERT(result.whole == 0 && result.frac == 0xFFFFFFFF && result.negative == false);
+}
+
+// negative result when right numebr bigger
+void test_sub_negative_result(TestObjs *objs) {
+  fixpoint_t result;
+  ASSERT(fixpoint_sub(&result, &objs->one, &objs->one_hundred) == RESULT_OK);
+  ASSERT(result.whole == 99 && result.frac == 0 && result.negative == true);
+}
+
+// ensure no false overflow
+void test_sub_no_false_overflow(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 0xFFFFFFFF, 0, false);
+  TEST_FIXPOINT_INIT(&b, 1, 0, false);
+
+  ASSERT(fixpoint_sub(&result, &a, &b) == RESULT_OK);
+  ASSERT(result.whole == 0xFFFFFFFE && result.frac == 0 && result.negative == false);
+}
+
+//negative overflow to -0
+void test_sub_negative_overflow_to_negzero(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 0xFFFFFFFF, 0xFFFFFFFF, true);
+  TEST_FIXPOINT_INIT(&b, 0, 1, false);
+
+  result_t res = fixpoint_sub(&result, &a, &b);
+  ASSERT(res & RESULT_OVERFLOW);
+  ASSERT(result.whole == 0 && result.frac == 0 && result.negative == true);
+}
+
+//antisymmetry: a−b == −(b−a)
+void test_sub_antisymmetry(TestObjs *objs) {
+  fixpoint_t r1, r2;
+  fixpoint_t a = objs->one_and_one_half; // 1.5
+  fixpoint_t b = objs->one;              // 1.0
+
+  fixpoint_sub(&r1, &a, &b);
+  fixpoint_sub(&r2, &b, &a);
+  fixpoint_negate(&r2);
+
+  ASSERT(r1.whole == r2.whole);
+  ASSERT(r1.frac == r2.frac);
+  ASSERT(r1.negative == r2.negative);
+}
+
+// identities
+void test_sub_identities(TestObjs *objs) {
+  fixpoint_t result;
+
+  // a - 0 = a
+  ASSERT(fixpoint_sub(&result, &objs->one_hundred, &objs->zero) == RESULT_OK);
+  TEST_EQUAL(&result, &objs->one_hundred);
+
+  // 0 - a = -a
+  ASSERT(fixpoint_sub(&result, &objs->zero, &objs->neg_eleven) == RESULT_OK);
+  ASSERT(result.whole == 11 && result.frac == 0 && result.negative == false);
+
+  ASSERT(fixpoint_sub(&result, &objs->zero, &objs->one) == RESULT_OK);
+  ASSERT(result.whole == 1 && result.frac == 0 && result.negative == true);
+}
+
+//  equal fractional parts (no borrow)
+void test_sub_equal_fracs(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 5, 0x80000000, false); // 5.5
+  TEST_FIXPOINT_INIT(&b, 2, 0x80000000, false); // 2.5
+
+  ASSERT(fixpoint_sub(&result, &a, &b) == RESULT_OK);
+  ASSERT(result.whole == 3 && result.frac == 0 && result.negative == false);
+}
+
+// Fraction only subtraction
+void test_sub_fraction_only(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 0, 0xC0000000, false); // 0.75
+  TEST_FIXPOINT_INIT(&b, 0, 0x40000000, false); // 0.25
+
+  ASSERT(fixpoint_sub(&result, &a, &b) == RESULT_OK);
+  ASSERT(result.whole == 0 && result.frac == 0x80000000 && result.negative == false);
+}
+
+// Subtracting negatives (double negative)
+void test_sub_double_negative(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 5, 0, false); // 5
+  TEST_FIXPOINT_INIT(&b, 3, 0, true);  // -3
+
+  ASSERT(fixpoint_sub(&result, &a, &b) == RESULT_OK);
+  ASSERT(result.whole == 8 && result.frac == 0 && result.negative == false);
+}
+
+//fixpoint_mul tests
+//simple positive multiplication
+void test_mul_basic(TestObjs *objs) {
+  fixpoint_t result;
+  ASSERT(fixpoint_mul(&result, &objs->one, &objs->one_hundred) == RESULT_OK);
+  ASSERT(result.whole == 100 && result.frac == 0 && result.negative == false);
+}
+
+// multiplication by zero
+void test_mul_by_zero(TestObjs *objs) {
+  fixpoint_t result;
+  ASSERT(fixpoint_mul(&result, &objs->one_hundred, &objs->zero) == RESULT_OK);
+  ASSERT(result.whole == 0 && result.frac == 0 && result.negative == false);
+}
+
+// positive × negative
+void test_mul_pos_neg(TestObjs *objs) {
+  fixpoint_t result;
+  ASSERT(fixpoint_mul(&result, &objs->one_hundred, &objs->neg_eleven) == RESULT_OK);
+  ASSERT(result.whole == 1100 && result.frac == 0 && result.negative == true);
+}
+
+// negative × negative
+void test_mul_neg_neg(TestObjs *objs) {
+  fixpoint_t result;
+  ASSERT(fixpoint_mul(&result, &objs->neg_eleven, &objs->neg_eleven) == RESULT_OK);
+  ASSERT(result.whole == 121 && result.frac == 0 && result.negative == false);
+}
+
+// underflow (tiny fractions)
+void test_mul_underflow(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t tiny;
+  TEST_FIXPOINT_INIT(&tiny, 0, 0x1, false); // 2^-32
+  result_t res = fixpoint_mul(&result, &tiny, &tiny);
+  ASSERT(res & RESULT_UNDERFLOW);
+  ASSERT(result.whole == 0 && result.frac == 0); // truncates to 0
+  ASSERT(result.negative == false);
+}
+
+// overflow (whole part exceeds 32 bits)
+void test_mul_overflow(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t large;
+  TEST_FIXPOINT_INIT(&large, 0xFFFFFFFF, 0, false);
+  result_t res = fixpoint_mul(&result, &large, &large);
+  ASSERT(res & RESULT_OVERFLOW);
+}
+
+//negative zero result
+void test_mul_negative_zero(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t tiny;
+  TEST_FIXPOINT_INIT(&tiny, 0, 0x1, false);
+  fixpoint_t negtiny = tiny;
+  negtiny.negative = true;
+
+  result_t res = fixpoint_mul(&result, &tiny, &negtiny);
+  ASSERT(res & RESULT_UNDERFLOW);
+  ASSERT(result.whole == 0 && result.frac == 0 && result.negative == true);
+}
+
+// fraction × fraction
+void test_mul_fraction_fraction(TestObjs *objs) {
+  fixpoint_t result;
+  ASSERT(fixpoint_mul(&result, &objs->one_half, &objs->one_half) == RESULT_OK);
+  ASSERT(result.whole == 0 && result.frac == 0x40000000 && result.negative == false);
+}
+
+//max × max
+void test_mul_max(TestObjs *objs) {
+  fixpoint_t result;
+  result_t res = fixpoint_mul(&result, &objs->max, &objs->max);
+  ASSERT(res & RESULT_OVERFLOW);
+
+}
+
+// Exact power of two fractions
+void test_mul_power_of_two_fracs(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 0, 0x40000000, false); // 0.25
+  TEST_FIXPOINT_INIT(&b, 0, 0x40000000, false); // 0.25
+
+  ASSERT(fixpoint_mul(&result, &a, &b) == RESULT_OK);
+  ASSERT(result.whole == 0);
+  ASSERT(result.frac == 0x10000000); // 0.0625
+  ASSERT(result.negative == false);
+}
+
+// Identity with 1 and -1
+void test_mul_identity(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t negone;
+  TEST_FIXPOINT_INIT(&negone, 1, 0, true);
+
+  ASSERT(fixpoint_mul(&result, &objs->one_hundred, &objs->one) == RESULT_OK);
+  TEST_EQUAL(&result, &objs->one_hundred);
+
+  ASSERT(fixpoint_mul(&result, &objs->one_hundred, &negone) == RESULT_OK);
+  ASSERT(result.whole == 100 && result.frac == 0 && result.negative == true);
+}
+
+// Associativity check (no overflow)
+void test_mul_associativity(TestObjs *objs) {
+  fixpoint_t r1, r2;
+  fixpoint_t a, b, c;
+  TEST_FIXPOINT_INIT(&a, 2, 0, false);
+  TEST_FIXPOINT_INIT(&b, 3, 0, false);
+  TEST_FIXPOINT_INIT(&c, 4, 0, false);
+
+  fixpoint_mul(&r1, &a, &b);
+  fixpoint_mul(&r1, &r1, &c);
+
+  fixpoint_mul(&r2, &b, &c);
+  fixpoint_mul(&r2, &a, &r2);
+
+  ASSERT(r1.whole == r2.whole);
+  ASSERT(r1.frac == r2.frac);
+  ASSERT(r1.negative == r2.negative);
+}
+
+// Edge: min × 2
+void test_mul_min_times_two(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t two;
+  TEST_FIXPOINT_INIT(&two, 2, 0, false);
+
+  ASSERT(fixpoint_mul(&result, &objs->min, &two) == RESULT_OK);
+  ASSERT(result.whole == 0);
+  ASSERT(result.frac == 0x00000002);
+  ASSERT(result.negative == false);
+}
+
+// Cross check underflow vs truncation
+void test_mul_tiny_underflow(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t tiny;
+  TEST_FIXPOINT_INIT(&tiny, 0, 0x2, false); // 2^-31
+
+  result_t res = fixpoint_mul(&result, &tiny, &tiny);
+  ASSERT(res & RESULT_UNDERFLOW);
+  ASSERT(result.whole == 0 && result.frac == 0);
+}
+
+//fixpoint_format_hex tests:
+
+// smallest fraction should show full 8 hex digits
+void test_format_min_fraction(TestObjs *objs) {
+  fixpoint_str_t s;
+  fixpoint_t val;
+  TEST_FIXPOINT_INIT(&val, 0, 0x00000001, false);
+
+  fixpoint_format_hex(&s, &val);
+  ASSERT(0 == strcmp("0.00000001", s.str));
+}
+
+// largest fraction should print as .ffffffff
+void test_format_max_fraction(TestObjs *objs) {
+  fixpoint_str_t s;
+  fixpoint_t val;
+  TEST_FIXPOINT_INIT(&val, 0, 0xFFFFFFFF, false);
+
+  fixpoint_format_hex(&s, &val);
+  ASSERT(0 == strcmp("0.ffffffff", s.str));
+}
+
+// trailing zeros should be trimmed
+void test_format_trim_trailing_zeros(TestObjs *objs) {
+  fixpoint_str_t s;
+  fixpoint_t val;
+  TEST_FIXPOINT_INIT(&val, 1, 0x80000000, false); // 1.8
+
+  fixpoint_format_hex(&s, &val);
+  ASSERT(0 == strcmp("1.8", s.str));
+}
+
+// negative value with fraction
+void test_format_negative_fraction(TestObjs *objs) {
+  fixpoint_str_t s;
+  fixpoint_t val;
+  TEST_FIXPOINT_INIT(&val, 2, 0x40000000, true); // -2.25
+
+  fixpoint_format_hex(&s, &val);
+  ASSERT(0 == strcmp("-2.4", s.str));
+}
+
+// overflow-produced -0 should still show -0.0
+void test_format_negative_zero(TestObjs *objs) {
+  fixpoint_str_t s;
+  fixpoint_t val;
+  TEST_FIXPOINT_INIT(&val, 0, 0, true); // -0 
+
+  fixpoint_format_hex(&s, &val);
+  ASSERT(0 == strcmp("-0.0", s.str));
+}
+
+//fixpoint_parse_hex valid tests
+
+void test_parse_mixed_case(TestObjs *objs) {
+  fixpoint_t val;
+  ASSERT(true == fixpoint_parse_hex(&val, FIXPOINT_STR("a.B")));
+  ASSERT(val.whole == 0xa);
+  ASSERT(val.frac == 0xb0000000); // ".B" = .1011 hex → 0xb0000000
+  ASSERT(val.negative == false);
+}
+
+void test_parse_leading_zeros(TestObjs *objs) {
+  fixpoint_t val;
+  ASSERT(true == fixpoint_parse_hex(&val, FIXPOINT_STR("00000001.00000001")));
+  ASSERT(val.whole == 1);
+  ASSERT(val.frac == 0x00000001);
+}
+
+void test_parse_max_length(TestObjs *objs) {
+  fixpoint_t val;
+  ASSERT(true == fixpoint_parse_hex(&val, FIXPOINT_STR("ffffffff.ffffffff")));
+  ASSERT(val.whole == 0xffffffff);
+  ASSERT(val.frac == 0xffffffff);
+}
+
+void test_parse_normalizes_negative_zero(TestObjs *objs) {
+  fixpoint_t val;
+  ASSERT(true == fixpoint_parse_hex(&val, FIXPOINT_STR("-0.0")));
+  ASSERT(val.whole == 0 && val.frac == 0 && val.negative == false);
+}
+
+
+//fixpoint_parse_hex invalid tests
+
+void test_parse_invalid_missing_frac(TestObjs *objs) {
+  fixpoint_t val;
+  ASSERT(false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.")));
+}
+
+void test_parse_invalid_missing_whole(TestObjs *objs) {
+  fixpoint_t val;
+  ASSERT(false == fixpoint_parse_hex(&val, FIXPOINT_STR(".8")));
+}
+
+void test_parse_invalid_too_many_digits(TestObjs *objs) {
+  fixpoint_t val;
+  ASSERT(false == fixpoint_parse_hex(&val, FIXPOINT_STR("123456789.0"))); // >8 digits whole
+  ASSERT(false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.123456789"))); // >8 digits frac
+}
+
+void test_parse_invalid_trailing(TestObjs *objs) {
+  fixpoint_t val;
+  ASSERT(false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.0xyz")));
+  ASSERT(false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.0 ")));
+}
+
+void test_parse_invalid_plus_or_space(TestObjs *objs) {
+  fixpoint_t val;
+  ASSERT(false == fixpoint_parse_hex(&val, FIXPOINT_STR("+1.0")));
+  ASSERT(false == fixpoint_parse_hex(&val, FIXPOINT_STR(" 1.0")));
+}
+
+void test_parse_invalid_hex_prefix(TestObjs *objs) {
+  fixpoint_t val;
+  ASSERT(false == fixpoint_parse_hex(&val, FIXPOINT_STR("0x1.0")));
+  ASSERT(false == fixpoint_parse_hex(&val, FIXPOINT_STR("1.0x1")));
+}
