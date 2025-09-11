@@ -105,6 +105,17 @@ TestObjs *setup( void ) {
   TEST( test_add_sign_of_larger );
   TEST( test_add_negative_zero_input );
   TEST( test_add_commutativity );
+  TEST( test_add_mixed_carry );
+  TEST( test_add_equal_fraction_cancel );
+  TEST( test_add_two_negatives );
+  TEST( test_add_cancel_whole_frac_remains );
+  TEST( test_add_frac_to_whole );
+  TEST( test_add_large_fraction );
+  TEST( test_add_associativity );
+  TEST( test_add_identity_with_zero );
+  TEST( test_add_min_fraction );
+  TEST( test_add_max_plus_zero );
+
 
   return objs;
 }
@@ -495,5 +506,133 @@ void test_add_commutativity(TestObjs *objs) {
   ASSERT(res1 == res2);
 }
 
+// tests mxed whole + fractional carry
+void test_add_mixed_carry(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 0xFFFFFFFE, 0xFFFFFFFF, false);
+  TEST_FIXPOINT_INIT(&b, 0, 0x1, false);
+
+  ASSERT(fixpoint_add(&result, &a, &b) == RESULT_OK);
+  ASSERT(result.whole == 0xFFFFFFFF);
+  ASSERT(result.frac == 0);
+  ASSERT(result.negative == false);
+}
+
+// Opposite signs equal fractional parts (cancel to zero)
+void test_add_equal_fraction_cancel(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t pos, neg;
+  TEST_FIXPOINT_INIT(&pos, 1, 0x80000000, false); // +1.5
+  TEST_FIXPOINT_INIT(&neg, 1, 0x80000000, true);  // -1.5
+
+  ASSERT(fixpoint_add(&result, &pos, &neg) == RESULT_OK);
+  ASSERT(result.whole == 0);
+  ASSERT(result.frac == 0);
+  ASSERT(result.negative == false);
+}
+// Negative + negative without overflow
+void test_add_two_negatives(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 2, 0x40000000, true); // -2.25
+  TEST_FIXPOINT_INIT(&b, 3, 0xC0000000, true); // -3.75
+
+  ASSERT(fixpoint_add(&result, &a, &b) == RESULT_OK);
+  ASSERT(result.whole == 6);
+  ASSERT(result.frac == 0);
+  ASSERT(result.negative == true);
+}
+
+// Positive + negative where whole cancels, frac remains
+void test_add_cancel_whole_frac_remains(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t pos, neg;
+  TEST_FIXPOINT_INIT(&pos, 2, 0x40000000, false); // 2.25
+  TEST_FIXPOINT_INIT(&neg, 2, 0, true);           // -2.0
+
+  ASSERT(fixpoint_add(&result, &pos, &neg) == RESULT_OK);
+  ASSERT(result.whole == 0);
+  ASSERT(result.frac == 0x40000000);
+  ASSERT(result.negative == false);
+}
+
+// Fraction only values adding to whole
+void test_add_frac_to_whole(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 0, 0x40000000, false); // 0.25
+  TEST_FIXPOINT_INIT(&b, 0, 0xC0000000, false); // 0.75
+
+  ASSERT(fixpoint_add(&result, &a, &b) == RESULT_OK);
+  ASSERT(result.whole == 1);
+  ASSERT(result.frac == 0);
+  ASSERT(result.negative == false);
+}
+
+// Large fractional add that doesn’t overflow
+void test_add_large_fraction(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 12345, 0, false);
+  TEST_FIXPOINT_INIT(&b, 0, 0xFFFFFFFF, false);
+
+  ASSERT(fixpoint_add(&result, &a, &b) == RESULT_OK);
+  ASSERT(result.whole == 12345);
+  ASSERT(result.frac == 0xFFFFFFFF);
+  ASSERT(result.negative == false);
+}
+
+// Associativity check; (a+b)+c == a+(b+c)
+void test_add_associativity(TestObjs *objs) {
+  fixpoint_t r1, r2;
+  fixpoint_t a, b, c;
+  TEST_FIXPOINT_INIT(&a, 1, 0, false);
+  TEST_FIXPOINT_INIT(&b, 2, 0, false);
+  TEST_FIXPOINT_INIT(&c, 3, 0, false);
+
+  fixpoint_add(&r1, &a, &b);
+  fixpoint_add(&r1, &r1, &c);
+
+  fixpoint_add(&r2, &b, &c);
+  fixpoint_add(&r2, &a, &r2);
+
+  ASSERT(r1.whole == r2.whole);
+  ASSERT(r1.frac == r2.frac);
+  ASSERT(r1.negative == r2.negative);
+}
+
+// Identity with zero
+void test_add_identity_with_zero(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t val;
+  TEST_FIXPOINT_INIT(&val, 42, 0x80000000, false); // 42.5
+
+  ASSERT(fixpoint_add(&result, &val, &objs->zero) == RESULT_OK);
+  TEST_EQUAL(&val, &result);
+
+  ASSERT(fixpoint_add(&result, &objs->zero, &val) == RESULT_OK);
+  TEST_EQUAL(&val, &result);
+}
+
+// Very small fractions
+void test_add_min_fraction(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 0, 0x00000001, false);
+  TEST_FIXPOINT_INIT(&b, 0, 0x00000001, false);
+
+  ASSERT(fixpoint_add(&result, &a, &b) == RESULT_OK);
+  ASSERT(result.whole == 0);
+  ASSERT(result.frac == 0x00000002);
+  ASSERT(result.negative == false);
+}
+
+// Max representable + 0 should not overflow
+void test_add_max_plus_zero(TestObjs *objs) {
+  fixpoint_t result;
+  ASSERT(fixpoint_add(&result, &objs->max, &objs->zero) == RESULT_OK);
+  TEST_EQUAL(&objs->max, &result);
+}
 
 //test_sub tests:
