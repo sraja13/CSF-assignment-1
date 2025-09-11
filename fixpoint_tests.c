@@ -94,7 +94,17 @@ TestObjs *setup( void ) {
   TEST_FIXPOINT_INIT( &objs->one_hundred, 100, 0, false );
   TEST_FIXPOINT_INIT( &objs->neg_eleven, 11, 0, true );
 
-  // TODO: initialize additional fixpoint_t instances
+  //test_add test functions
+  TEST( test_add_frac_carry );
+  TEST( test_add_whole_overflow );
+  TEST( test_add_large_but_fits );
+  TEST( test_add_negative_overflow_to_negzero );
+  TEST( test_add_cancel_to_zero );
+  TEST( test_add_borrow_across_frac );
+  TEST( test_add_subtract_no_borrow );
+  TEST( test_add_sign_of_larger );
+  TEST( test_add_negative_zero_input );
+  TEST( test_add_commutativity );
 
   return objs;
 }
@@ -359,4 +369,131 @@ void test_parse_hex( TestObjs *objs ) {
   // your own test functions.
 }
 
-// TODO: define additional test functions
+
+//unit tests for fixpoint_add:
+
+void test_add_frac_carry(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t almost_one, tiny;
+  TEST_FIXPOINT_INIT(&almost_one, 0, 0xFFFFFFFF, false);
+  TEST_FIXPOINT_INIT(&tiny, 0, 0x1, false);
+
+  ASSERT(fixpoint_add(&result, &almost_one, &tiny) == RESULT_OK);
+  ASSERT(result.whole == 1);
+  ASSERT(result.frac == 0);
+  ASSERT(result.negative == false);
+}
+
+void test_add_whole_overflow(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t big, tiny;
+  TEST_FIXPOINT_INIT(&big, 0xFFFFFFFF, 0xFFFFFFFF, false);
+  TEST_FIXPOINT_INIT(&tiny, 0, 0x1, false);
+
+  ASSERT(fixpoint_add(&result, &big, &tiny) & RESULT_OVERFLOW);
+  ASSERT(result.whole == 0); 
+  ASSERT(result.frac == 0);
+  ASSERT(result.negative == false);
+}
+
+void test_add_large_but_fits(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 0x80000000, 0, false);
+  TEST_FIXPOINT_INIT(&b, 0x7FFFFFFF, 0, false);
+
+  ASSERT(fixpoint_add(&result, &a, &b) == RESULT_OK);
+  ASSERT(result.whole == 0xFFFFFFFF);
+  ASSERT(result.frac == 0);
+  ASSERT(result.negative == false);
+}
+
+void test_add_negative_overflow_to_negzero(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 0xFFFFFFFF, 0xFFFFFFFF, true);
+  TEST_FIXPOINT_INIT(&b, 0, 0x1, true);
+
+  ASSERT(fixpoint_add(&result, &a, &b) & RESULT_OVERFLOW);
+  ASSERT(result.whole == 0);
+  ASSERT(result.frac == 0);
+  ASSERT(result.negative == true); // negative zero from overflow
+}
+
+void test_add_cancel_to_zero(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t pos, neg;
+  TEST_FIXPOINT_INIT(&pos, 1, 0, false);
+  TEST_FIXPOINT_INIT(&neg, 1, 0, true);
+
+  ASSERT(fixpoint_add(&result, &pos, &neg) == RESULT_OK);
+  ASSERT(result.whole == 0);
+  ASSERT(result.frac == 0);
+  ASSERT(result.negative == false);
+}
+
+void test_add_borrow_across_frac(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t pos, negtiny;
+  TEST_FIXPOINT_INIT(&pos, 1, 0, false);
+  TEST_FIXPOINT_INIT(&negtiny, 0, 0x1, true);
+
+  ASSERT(fixpoint_add(&result, &pos, &negtiny) == RESULT_OK);
+  ASSERT(result.whole == 0);
+  ASSERT(result.frac == 0xFFFFFFFF);
+  ASSERT(result.negative == false);
+}
+
+void test_add_subtract_no_borrow(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t pos, neg;
+  TEST_FIXPOINT_INIT(&pos, 1, 2, false);
+  TEST_FIXPOINT_INIT(&neg, 0, 1, true);
+
+  ASSERT(fixpoint_add(&result, &pos, &neg) == RESULT_OK);
+  ASSERT(result.whole == 1);
+  ASSERT(result.frac == 1);
+  ASSERT(result.negative == false);
+}
+
+void test_add_sign_of_larger(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 0, 0x40000000, false); // 0.4
+  TEST_FIXPOINT_INIT(&b, 0, 0x80000000, true);  // -0.8
+
+  ASSERT(fixpoint_add(&result, &a, &b) == RESULT_OK);
+  ASSERT(result.whole == 0);
+  ASSERT(result.frac == 0x40000000);
+  ASSERT(result.negative == true); // sign of larger magnitude
+}
+
+void test_add_negative_zero_input(TestObjs *objs) {
+  fixpoint_t result;
+  fixpoint_t negzero, tiny;
+  TEST_FIXPOINT_INIT(&negzero, 0, 0, true);
+  TEST_FIXPOINT_INIT(&tiny, 0, 1, false);
+
+  ASSERT(fixpoint_add(&result, &negzero, &tiny) == RESULT_OK);
+  ASSERT(result.whole == 0);
+  ASSERT(result.frac == 1);
+  ASSERT(result.negative == false); // -0 treated as +0
+}
+
+void test_add_commutativity(TestObjs *objs) {
+  fixpoint_t r1, r2;
+  fixpoint_t a, b;
+  TEST_FIXPOINT_INIT(&a, 0, 0xFFFFFFFF, false);
+  TEST_FIXPOINT_INIT(&b, 1, 0, true);
+
+  result_t res1 = fixpoint_add(&r1, &a, &b);
+  result_t res2 = fixpoint_add(&r2, &b, &a);
+
+  ASSERT(r1.whole == r2.whole);
+  ASSERT(r1.frac == r2.frac);
+  ASSERT(r1.negative == r2.negative);
+  ASSERT(res1 == res2);
+}
+
+
+//test_sub tests:
