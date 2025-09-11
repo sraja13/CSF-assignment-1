@@ -1,3 +1,5 @@
+
+
 #include "fixpoint.h"
 #include <assert.h>
 #include <ctype.h>
@@ -10,48 +12,70 @@
 // if you want to be able to write unit tests for them
 ////////////////////////////////////////////////////////////////////////
 
-// fixpoint add and sub  helper functions
-// Add magnitudes when same sign
+/**
+ * Checks if a fixpoint number has zero magnitude.
+ * param- x pointer to the fixpoint number.
+ * return-true if whole and fraction are both zero
+ */
 static inline bool is_zero_mag(const fixpoint_t *x) {
   return x->whole == 0 && x->frac == 0;
 }
-// Compare magnitudes of two fixpoint numbers
+/**
+ * Compares the magnitudes of two fixpoint numbers (no sign).
+ * param-
+ * left pointer to left num.
+ * right pointer to right num.
+ * return -1 if left < right, 1 if left > right.
+ */
 static int compare_magnitudes(const fixpoint_t *left, const fixpoint_t *right) {
   if (left->whole != right->whole) {
     return (left->whole < right->whole) ? -1 : 1;
   } else if (left->frac != right->frac) {
     return (left->frac < right->frac) ? -1 : 1;
   } else {
-    return 0;
+    return 0; // magnitudes are equal
   }
 }
-
+/**
+ * Adds magnitudes of two nums with the same sign.
+ * @param result pointer to the output num.
+ * @param left pointer to left num.
+ * @param right right pointer to right num..
+ * @param negative Boolean flag  if the result should be negative.
+ * @return Flags mean  overflow occurred.
+ */
 static result_t add_magnitudes_same_sign(fixpoint_t *result,
                                          const fixpoint_t *left,
                                          const fixpoint_t *right,
                                          bool negative) {
   uint64_t frac_sum = (uint64_t)left->frac + (uint64_t)right->frac;
-  uint64_t carry = frac_sum >> 32;
-  uint64_t whole_sum = (uint64_t)left->whole + (uint64_t)right->whole + carry;
+  uint64_t carry = frac_sum >> 32; // carry from fraction
+  uint64_t whole_sum = (uint64_t)left->whole + (uint64_t)right->whole + carry; // add whole and carry
 
-  result->frac = (uint32_t)(frac_sum & 0xFFFFFFFFu);
-  result->whole = (uint32_t)(whole_sum & 0xFFFFFFFFu);
-  result->negative = negative;
+  result->frac = (uint32_t)(frac_sum & 0xFFFFFFFFu); // store fraction
+  result->whole = (uint32_t)(whole_sum & 0xFFFFFFFFu); // store whole
+  result->negative = negative; // preserve sign
 
   result_t flags = RESULT_OK;
   if (whole_sum >> 32)
     flags |= RESULT_OVERFLOW; // overflow on 33rd bit
 
-  // Normalize zero except negative overflow case
+  // Normalize 0 except negative overflow case
   if (result->whole == 0 && result->frac == 0) {
     if (!(negative && (flags & RESULT_OVERFLOW))) {
-      result->negative = false;
+      result->negative = false; // 0 is not negative
     }
   }
   return flags;
 }
 
-// Subtract magnitudes when opposite sign
+/**
+ * Subtracts magnitudes when numbers have opposite signs.
+ * param-
+ *  result pointer to output num.
+ *  larger pointer to larger magnitude.
+ *  smaller pointer to smaller magnitude.
+ */
 static void subtract_magnitudes_opposite_sign(fixpoint_t *result,
                                               const fixpoint_t *larger,
                                               const fixpoint_t *smaller) {
@@ -63,49 +87,74 @@ static void subtract_magnitudes_opposite_sign(fixpoint_t *result,
   uint32_t out_frac, out_whole;
   if (largerfrac >= smallerfrac) {
     // no borrow
-    out_frac = (uint32_t)(largerfrac - smallerfrac);
-    out_whole = (uint32_t)(largerwhole - smallerwhole);
+    out_frac = (uint32_t)(largerfrac - smallerfrac); // subtract fractions
+    out_whole = (uint32_t)(largerwhole - smallerwhole); // subtract wholes
   } else { // borrow 1 whole
-    out_frac = (uint32_t)((largerfrac + (1ULL << 32)) - smallerfrac);
+    out_frac = (uint32_t)((largerfrac + (1ULL << 32)) - smallerfrac); // subtract whole after borrow
     out_whole = (uint32_t)((largerwhole - 1) - smallerwhole);
   }
 
   result->whole = out_whole;
   result->frac = out_frac;
   result->negative = larger->negative && !is_zero_mag(larger);
-  if (result->whole == 0 && result->frac == 0) {
-    result->negative = false; // normalize zero
-  }
+ 
+  if (result->whole == 0 && result->frac == 0)  result->negative = false; // normalize zer0
 }
-// Compute final fraction, whole, and flags
+/**
+ * Finalizes multiplication result from partial products.
+ * param-
+ *  p0 product of fractional parts.
+ *  p1 product of left frac * right whole.
+ *  p2 product of left whole * right frac.
+ *  p3 product of whole parts.
+ *  out_frac pointer to resulting fraction.
+ *  out_whole pointer to resulting whole part.
+ *  overflow pointer to overflow.
+ *  underflow pointer to underflow.
+ */
 static void finalize_mul(uint64_t p0, uint64_t p1, uint64_t p2, uint64_t p3,
                          uint32_t *out_frac, uint32_t *out_whole,
                          bool *overflow, bool *underflow) {
-  uint32_t x0_low = (uint32_t)(p0 & 0xFFFFFFFFu);
-  *underflow = (x0_low != 0);
+  uint32_t x0_low = (uint32_t)(p0 & 0xFFFFFFFFu); // check lost bits for underflow
+  *underflow = (x0_low != 0); // underflow if lost occurs
 
-  uint64_t x1 = (p0 >> 32) + (p1 & 0xFFFFFFFFu) + (p2 & 0xFFFFFFFFu);
-  uint64_t x2 = (p1 >> 32) + (p2 >> 32) + p3;
+  uint64_t x1 = (p0 >> 32) + (p1 & 0xFFFFFFFFu) + (p2 & 0xFFFFFFFFu); // partial sum for fraction
+  uint64_t x2 = (p1 >> 32) + (p2 >> 32) + p3;  // partial sum for whole
 
-  *out_frac = (uint32_t)(x1 & 0xFFFFFFFFu);
-  uint64_t carry1 = (x1 >> 32);
+  *out_frac = (uint32_t)(x1 & 0xFFFFFFFFu); // store fraction
+  uint64_t carry1 = (x1 >> 32); // carry to whole
 
   uint64_t tmp = x2 + carry1;
   *out_whole = (uint32_t)(tmp & 0xFFFFFFFFu);
-  *overflow = ((tmp >> 32) != 0);
+  *overflow = ((tmp >> 32) != 0); // overflow to bits above 32
 }
+/**
+ * Normalizes zero for multiplication results.
+ * param-
+ * result pointer to the result.
+ * underflow Boolean flag for underflow.
+ * overflow Boolean flag for overflow.
+ * out_sign expected sign if non-zero.
+ */
 static void normalize_zero_mul(fixpoint_t *result, bool underflow,
                                bool overflow, bool out_sign) {
   if (result->whole == 0 && result->frac == 0) {
     if (!(underflow || overflow)) {
-      result->negative = false;
+      result->negative = false; // pure zero
     } else {
-      result->negative = out_sign;
+      result->negative = out_sign; // expected sign
     }
   }
 }
 
-// fixpoint_format_hex Helper
+/**
+ * Formats the fractional part in hexadecimal.
+ * param-
+ * buffer pointer to the character buffer to be written.
+ * size size of the buffer.
+ * frac fractional part of the fixpoint number (32 bit).
+ * return- number of characters written to the buffer (w/out '\0').
+ */
 static int formatFracHex(char *buffer, size_t size, uint32_t frac) {
   int fracLength = 0; // num of chars
 
@@ -131,19 +180,35 @@ static int formatFracHex(char *buffer, size_t size, uint32_t frac) {
 
   return fracLength; // number of characters written
 }
+/**
+ * Checks if a character is a valid hexadecimal digit and converts to value.
+ * param-
+ *  c character to check.
+ * value pointer to an integer to store valid value.
+ * return- true if the character is a hex digit.
+ */
 static bool is_hex_digit(char c, int *value) {
     if (c >= '0' && c <= '9') { 
-        *value = c - '0'; 
+        *value = c - '0'; // Convert '0'..'9' to 0..9
         return true; 
     }
+     // Convert uppercase/lowercase letters to lowercase
     char lc = (char)tolower((unsigned char)c);
     if (lc >= 'a' && lc <= 'f') {
-        *value = 10 + (lc - 'a'); 
+        *value = 10 + (lc - 'a'); // Convert 'a...f' to 10..15
         return true; 
     }
     return false;
-}
-
+} // not valid hex digit
+/**
+ * Parses a hexadecimal part of a fixpoint number from a string.
+ * Param -
+ *  p pointer to the current position
+ *  out pointer to store the result 32-bit value
+ *  min_digits minimum number of hex digits required
+ *  max_digits maximum number of hex digits allowed
+ * return- true if a valid hexadecimal part was parsed
+ */
 static bool parse_hex_part(const char **p, uint32_t *out, int min_digits, int max_digits) {
     uint32_t result = 0;
     int digits = 0;
@@ -159,10 +224,24 @@ static bool parse_hex_part(const char **p, uint32_t *out, int min_digits, int ma
     return true;
 }
 
+/**
+ * Parses the whole (integer) part num.
+ * Param -
+ *   p pointer to the current position (will advance)
+ *   whole pointer to store the resulting 32-bit whole part
+ * Return - true if a valid whole part was parsed
+ */
 static bool parse_whole(const char **p, uint32_t *whole) {
     return parse_hex_part(p, whole, 1, 8);
 }
-
+/**
+ * Parses the fractional part of a num
+ * and left-aligns the value to 32 bits.
+ * Param -
+ *   p pointer to the current position (will advance)
+ *   frac pointer to store the resulting 32-bit fractional part
+ * Return - true if a valid fractional part was parsed
+ */
 static bool parse_frac(const char **p, uint32_t *frac) {
     const char *tmp = *p;
     if (!parse_hex_part(p, frac, 1, 8)) return false;
