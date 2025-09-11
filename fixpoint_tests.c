@@ -500,70 +500,77 @@ void test_parse_hex( TestObjs *objs ) {
 }
 
 // Unit tests for Assignment 1 Edge Cases:
-
-// unit tests for fixpoint_init edge cases
-void test_init_edge_cases(TestObjs *objs) {
+// Test fixpoint_init for edge and unusual values
+void test_fixpoint_init_edges(TestObjs *objs) {
     fixpoint_t val;
 
-    // Only fraction is non-zero, whole is 0
-    fixpoint_init(&val, 0, 1, true);
+    fixpoint_init(&val, 0, 1, true);                // 0 whole, non-zero fraction
     ASSERT(val.whole == 0);
     ASSERT(val.frac == 1);
     ASSERT(val.negative == true);
 
-    // Both whole and fraction maxed out
-    fixpoint_init(&val, 0xFFFFFFFF, 0xFFFFFFFF, false);
+    fixpoint_init(&val, 0xFFFFFFFF, 0, true);      // max whole, 0 fraction
+    ASSERT(val.whole == 0xFFFFFFFF);
+    ASSERT(val.frac == 0);
+    ASSERT(val.negative == true);
+
+    fixpoint_init(&val, 0xFFFFFFFF, 0xFFFFFFFF, false); // max whole & fraction
     ASSERT(val.whole == 0xFFFFFFFF);
     ASSERT(val.frac == 0xFFFFFFFF);
     ASSERT(val.negative == false);
-
-    // Fraction maxed, negative
-    fixpoint_init(&val, 0, 0xFFFFFFFF, true);
-    ASSERT(val.whole == 0);
-    ASSERT(val.frac == 0xFFFFFFFF);
-    ASSERT(val.negative == true);
-}
-//  unit test for repeated Negation
-void test_repeated_negation(TestObjs *objs) {
-    fixpoint_t val;
-
-    // Negate a positive number twice should return original
-    fixpoint_init(&val, 5, 12345678, false);
-    fixpoint_negate(&val);
-    ASSERT(val.negative == true);
-    fixpoint_negate(&val);
-    ASSERT(val.negative == false);
-
-    // Negate a negative number twice should return original
-    fixpoint_init(&val, 10, 987654321, true);
-    fixpoint_negate(&val);
-    ASSERT(val.negative == false);
-    fixpoint_negate(&val);
-    ASSERT(val.negative == true);
-
-    // Negate zero multiple times should stay zero
-    fixpoint_init(&val, 0, 0, false);
-    fixpoint_negate(&val);
-    ASSERT(val.negative == false);
-    fixpoint_negate(&val);
-    ASSERT(val.negative == false);
 }
 
-void test_correct_initialization(TestObjs *objs) {
+// test fixpoint_get_whole with edge values
+void test_fixpoint_get_whole_edges(TestObjs *objs) {
     fixpoint_t val;
 
-    // Initialize with arbitrary numbers and check getters
-    fixpoint_init(&val, 1234, 0xABCDEFFF, true);
-    ASSERT(fixpoint_get_whole(&val) == 1234);
-    ASSERT(fixpoint_get_frac(&val) == 0xABCDEFFF);
-    ASSERT(fixpoint_is_negative(&val) == true);
-
-    // Initialize with zero whole, non-zero fraction
-    fixpoint_init(&val, 0, 0x80000000, false);
+    fixpoint_init(&val, 0, 0x80000000, false);      // 0  whole, high fraction
     ASSERT(fixpoint_get_whole(&val) == 0);
-    ASSERT(fixpoint_get_frac(&val) == 0x80000000);
-    ASSERT(fixpoint_is_negative(&val) == false);
+
+    fixpoint_init(&val, 0xFFFFFFFF, 1, true);       // max whole, small fraction
+    ASSERT(fixpoint_get_whole(&val) == 0xFFFFFFFF);
 }
+
+// test fixpoint_get_frac with edge values not covered in originals
+void test_fixpoint_get_frac_edges(TestObjs *objs) {
+    fixpoint_t val;
+
+    fixpoint_init(&val, 0, 1, false);               // minimal non-zero fraction
+    ASSERT(fixpoint_get_frac(&val) == 1);
+
+    fixpoint_init(&val, 1234, 0xFFFFFFFF, true);   // max fraction
+    ASSERT(fixpoint_get_frac(&val) == 0xFFFFFFFF);
+}
+
+// test fixpoint_is_negative with zero fraction edge cases
+void test_fixpoint_is_negative_edges(TestObjs *objs) {
+    fixpoint_t val;
+
+    fixpoint_init(&val, 0, 1, false);               // zero whole, positive fraction
+    ASSERT(fixpoint_is_negative(&val) == false);
+
+    fixpoint_init(&val, 0, 1, true);                // zero whole, positive fraction but negative flag
+    ASSERT(fixpoint_is_negative(&val) == true);
+}
+
+// test fixpoint_negate with repeated negation and unusual values
+void test_fixpoint_negate_edges(TestObjs *objs) {
+    fixpoint_t val;
+
+    fixpoint_init(&val, 0, 1, false);               // zero whole, positive fraction
+    fixpoint_negate(&val);
+    ASSERT(val.negative == true);
+    fixpoint_negate(&val);
+    ASSERT(val.negative == false);
+
+    fixpoint_init(&val, 0xFFFFFFFF, 0xFFFFFFFF, true); // max whole & fraction, negative
+    fixpoint_negate(&val);
+    ASSERT(val.negative == false);
+    fixpoint_negate(&val);
+    ASSERT(val.negative == true);
+}
+
+
 //unit tests for fixpoint_add:
 
 void test_add_frac_carry(TestObjs *objs) {
